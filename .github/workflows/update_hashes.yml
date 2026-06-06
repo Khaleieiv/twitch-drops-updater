@@ -1,0 +1,45 @@
+name: Update Twitch GQL Hashes
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    # Allows manual triggering from the GitHub Actions UI
+
+permissions:
+  contents: write
+
+jobs:
+  update-hashes:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Run hash scraper
+      run: python fetch_hashes.py
+
+    - name: Commit and Push changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add constants.json
+        # Check if there are changes to commit. If not, exit gracefully.
+        if git diff --staged --quiet; then
+          echo "No changes in constants.json. Skipping commit."
+        else
+          git commit -m "chore: auto-update twitch gql hashes [skip ci]"
+          git push
+        fi
